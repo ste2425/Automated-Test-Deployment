@@ -1,0 +1,23 @@
+doctype html
+html
+	head
+		title Automated Testing
+		meta(name="viewport" content="width=device-width, initial-scale=1.0")
+		meta(http-equiv="X-UA-Compatible" content="IE=edge")
+		link(rel='stylesheet', href='/css/bootstrap.min.css')
+			
+body.container
+	.row
+		div.col-md-12
+			h3 Automated Testing
+		div.col-md-6
+			h5 Deploying: <small> #{state.deploy} </small> Unlocking <small> #{state.unlock} </small> Updating <small> #{state.update} </small> Shutting Down <small> #{state.shutdown} </small>
+		dov.col-md-6
+			h6.col-sm-1 Toggle:
+			.btn-group.col-sm-11
+				button.btn.btn-default.btn-sm Deploying
+				button.btn.btn-default.btn-sm Unlocking
+				button.btn.btn-default.btn-sm Updating
+				button.btn.btn-default.btn-sm Shutting Down
+	hr
+

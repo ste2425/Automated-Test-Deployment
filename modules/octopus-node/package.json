@@ -1,0 +1,14 @@
+{
+	"name": "octopus-node",
+	"version": "0.0.1",
+	"description": "Octopus Deploy Client For Node.JS",
+	"main": "./lib/index.js",
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1"
+	},
+	"author": "Scoop",
+	"license": "ISC",
+	"dependencies": {
+		"async": "0.2.10"
+	}
+}

@@ -1,0 +1,41 @@
+{
+	"dataAccess": {
+		"user": "",
+		"password": "",
+		"host": "",
+		"port": 0,
+		"database": "",
+		"collection": ""
+	},
+	"aqmpAccess": {
+		"user": "",
+		"password": "",
+		"host": "",
+		"port": 0,
+		"deploymentQueueName": ""
+	},
+	"octopusAccess": {
+		"apiKey": "",
+		"host": ""
+	},
+	"azureAccess": {
+		"host": "",
+		"username": "",
+		"password": ""
+	},
+	"deploymentOptions": {
+		"deployBranches": [""],
+		"datasetFilename": "",
+		"poolEnvironmentId": "",
+		"deploymentEnvironmentId": "",
+		"deploymentConfig": {
+			"MachineNumber": 0,
+			"MachineRoles": [
+				[""]
+			]
+		}
+	},
+	"serverOptions": {
+		"port": 0
+	}
+}
