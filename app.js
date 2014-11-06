@@ -270,7 +270,7 @@ function checkRunningDeployments(taskId, cb) {
                             console.log('Deployment done, posting complete action back to coral-reef');
 
                             var payload = {
-                                type: (t.Task.FinishedSuccessfully ? 'complete' : item.State.toLowerCase()),
+                                type: (t.Task.FinishedSuccessfully ? 'complete' : 'failed'), //t.Task.State.toLowerCase()),
                                 environment: 'automatedTesting001',
                                 hrUrl: ('http://' + item.hrUri),
                                 recruitmentUrl: ('http://' + item.recruitmentUri),
@@ -443,5 +443,5 @@ function checkTestingComplete() {
 //start running tasks
 pollCoralReefForQueuedDeployments();
 checkRunningDeployments();
-//shutdownPoolMachines();
+shutdownPoolMachines();
 checkTestingComplete();
