@@ -1,0 +1,34 @@
+.modal-header
+    h3.modal-title Manage Orphans 
+        small possible orphan records detected.
+.modal-body
+    accordion
+        accordion-group(is-open="status.helpOpen")
+            accordion-heading
+                div(style="cursor:pointer;width:100%;")
+                    span What is this? What can cause it?
+                    i.glyphicon.glyphicon-question-sign.pull-right
+            p Deployment records can be orphaned when manually unlocked through Octopus. 
+            p The danger is the old (orphaned) deployment record remains meaning if Coral-Reef then issues a command to unlock it any deployments taken place on that environment since will be unlocked instead.
+            p To resolve the issue select which record represents the current deployment and the others will be disposed off. To prevent this problem manually unlock environments here.
+            button.btn.btn-primary.btn-sm(ng-click="status.helpOpen = !status.helpOpen") Close
+    hr
+    div(ng-show="!status.helpOpen")
+        .row
+            .col-md-12
+                h5 Suggested active deployment:
+                .col-md-12.deploy-item
+                    .col-md-6
+                        strong {{deploy.build.Version}} on {{deploy.deployStarted | formatDate:'Do-MM-YYYY HH:mm' | formatNull:'Date Unavailable'}}
+                    .col-md-6
+                        button.btn.btn-primary.pull-right(ng-click="restore()") Restore
+                h5 Suggested Orphans
+                div(ng-repeat="orphan in orphans")
+                        .col-md-12.deploy-item
+                            .col-md-6
+                                p {{orphan.build.Version}} on {{orphan.deployStarted | formatDate:'Do-MM-YYYY HH:mm'}}
+                            .col-md-6
+                                button.btn.btn-default.pull-right(ng-click="makeActive($index)") Make Active
+.modal-footer
+    button.btn.btn-primary(ng-show="!status.helpOpen" ng-click="cleanUp()") Clean Up
+    button.btn.btn-default(ng-click="close()") Close

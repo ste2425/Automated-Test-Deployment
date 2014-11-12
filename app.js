@@ -25,14 +25,19 @@ var atCollection = Database.get(__CONFIG.dataAccess.collection);
 //Flags
 var deployProcessing = false;
 var checkForDeployments = false;
-var checkActiveDeploymentState = true;
+var checkActiveDeploymentState = false;
 var checkMachinesToShutdown = false;
-var checkForDeploymentsUnlock = true;
+var checkForDeploymentsUnlock = false;
 
 //message handler
 function messageHandler(message) {
     //Stop recieveing more messages whilst proccessing this.
     console.log('recieved message');
+    if (!message) {
+        console.log('Error with message', message);
+        return;
+    }
+
     if (!deployProcessing) {
         console.log('processing');
         deployProcessing = true;
@@ -61,7 +66,47 @@ app.listen(app.get('port'), function() {
     console.log('listening on *:', app.get('port'));
 });
 
-/*app.get('/', function(req, res) {
+app.get('/insert', function(req, res) {
+    var i = {
+        "deployStarted": Date.now(),
+        "deployFinished": Date.now(),
+        "build": {
+            "Branch": "develop",
+            "Version": Math.random().toString().slice(2, 11)
+        },
+        "dataset": {
+            "Filename": "comalley_51415189821496_5.3.11723_automated-testing-v3-2.zip",
+            "Name": "automated-testing v3.2"
+        },
+        "deploymentId": "deployments-" + Math.random().toString().slice(2, 11),
+        "environmentId": "Environments-195",
+        "environmentName": null,
+        "hrUri": "casdeploy003.cloudapp.net:82",
+        "isCompleted": true,
+        "isExecuting": false,
+        "isProvisioning": false,
+        "isSuccessful": true,
+        "message": {
+            "_id": "545d03d5bee52ca423ded42d",
+            "branch": "develop",
+            "buildId": "5.4.11835",
+            "dequeued": "2014-11-10T10:02:37.653Z",
+            "queued": "2014-11-07T17:39:33.546Z",
+            "snapshotFile": "comalley_51415189821496_5.3.11723_automated-testing-v3-2.zip",
+            "snapshotName": "automated-testing v3.2",
+            "status": "deploying"
+        },
+        "mobileUri": "casdeploy003.cloudapp.net:84",
+        "recruitmentUri": "casdeploy003.cloudapp.net:80",
+        "state": "Success",
+        "taskId": "ServerTasks-23369"
+    }
+    atCollection.insert(i, function(e, r) {
+        res.status(e ? 500 : 200).send(e || r);
+    });
+});
+
+app.get('/', function(req, res) {
     res.render('index', {
         state: {
             deploy: checkForDeployments,
@@ -70,38 +115,119 @@ app.listen(app.get('port'), function() {
             unlock: checkForDeploymentsUnlock
         }
     });
-});*/
+});
+app.get('/modals/orphanedDeployModal', function(req, res) {
+    res.render('orphanedDeployModal');
+});
+app.get('/nextdeploy', function(req, res) {
+    var r = request.get('https://coral-reef.azurewebsites.net/deployment/queue/peek')
+    r.pipe(res);
+    r.on('error', function(e) {
+        res.status(500).send({
+            ErrorMessage: e
+        });
+    });
+});
 
-app.get('/toggle/:type', function(req, res) {
+app.post('/cleanupdeploy', function(req, res) {
+    if (!req.body.deploymentId || !req.body.environmentId) {
+        return res.status(500).send({
+            ErrorMessage: 'requires deployment id and environment id'
+        });
+    }
+    var query = {
+        $and: [{
+            "deploymentId": {
+                $ne: req.body.deploymentId
+            }
+        }, {
+            "environmentId": req.body.environmentId
+        }]
+    };
+    console.log(require('util').inspect(query, {
+        depth: null
+    }))
+    atCollection.remove(query, function(e, r) {
+
+        res.status(e ? 500 : 200).send(e || {
+            Removed: r
+        });
+    })
+});
+
+app.post('/unlockdeployment', function(req, res) {
+    if (!req.body.deploymentId && !req.body.databaseId) {
+        return res.status(500).send({
+            ErrorMessage: 'An id has not been provided.',
+            Additional: 'A deploymentId or databaseId must be provided under deploymentId or databaseId body properties.'
+        });
+    }
+
+    unlockDeployment({
+        deploymentId: req.body.deploymentId,
+        databaseId: req.body.databaseId
+    }, function(e, r) {
+        res.status(e ? 500 : 200).send(e || r);
+    });
+})
+
+app.get('/deployments', function(req, res) {
+    atCollection.find({}, function(e, r) {
+        var deployments = {};
+        var d = [];
+
+        r.forEach(function(item) {
+            if (!(deployments[item.environmentId] instanceof Array))
+                deployments[item.environmentId] = [];
+
+            deployments[item.environmentId].push(item);
+        });
+
+        for (var i in deployments) {
+            deployments[i].sort(function(a, b) {
+                return b.deployStarted - a.deployStarted;
+            });
+
+            d.push({
+                deployment: deployments[i][0],
+                orphanedDeployments: deployments[i].slice(1, deployments.length)
+            });
+        }
+
+        res.status(e ? 500 : 200).send(e || d);
+    });
+});
+
+app.get('/state/:type', function(req, res) {
     switch (req.params.type) {
         case 'deployment':
             res.send({
-                checkForDeployments: checkForDeployments
+                deployment: checkForDeployments
             });
             break;
         case 'unlock':
             res.send({
-                checkForDeploymentsUnlock: checkForDeploymentsUnlock
+                unlock: checkForDeploymentsUnlock
             });
             break;
         case 'shutdown':
             res.send({
-                checkMachinesToShutdown: checkMachinesToShutdown
+                shutdown: checkMachinesToShutdown
             });
             break;
         case 'activedeployment':
             res.send({
-                checkActiveDeploymentState: checkActiveDeploymentState
+                activedeployment: checkActiveDeploymentState
             });
             break;
         case 'all':
             res.send({
-                checkForDeployments: checkForDeployments,
-                checkForDeploymentsUnlock: checkForDeploymentsUnlock,
-                checkMachinesToShutdown: checkMachinesToShutdown,
-                checkActiveDeploymentState: checkActiveDeploymentState
+                deployment: checkForDeployments,
+                unlock: checkForDeploymentsUnlock,
+                shutdown: checkMachinesToShutdown,
+                activedeployment: checkActiveDeploymentState
             })
-        break;
+            break;
         default:
             res.status(500).send({
                 ErrorMessage: 'Type not found.',
@@ -116,25 +242,25 @@ app.post('/toggle/:type', function(req, res) {
         case 'deployment':
             checkForDeployments = !checkForDeployments;
             res.send({
-                checkForDeployments: checkForDeployments
+                deployment: checkForDeployments
             });
             break;
         case 'unlock':
             checkForDeploymentsUnlock = !checkForDeploymentsUnlock;
             res.send({
-                checkForDeploymentsUnlock: checkForDeploymentsUnlock
+                unlock: checkForDeploymentsUnlock
             });
             break;
         case 'shutdown':
             checkMachinesToShutdown = !checkMachinesToShutdown;
             res.send({
-                checkMachinesToShutdown: checkMachinesToShutdown
+                shutdown: checkMachinesToShutdown
             });
             break;
         case 'activedeployment':
             checkActiveDeploymentState = !checkActiveDeploymentState;
             res.send({
-                checkActiveDeploymentState: checkActiveDeploymentState
+                activedeployment: checkActiveDeploymentState
             });
             break;
         default:
@@ -147,10 +273,16 @@ app.post('/toggle/:type', function(req, res) {
 });
 
 //internal functions
-function unlockDeployment(deployId, cb) {
-    atCollection.find({
-        deploymentId: deployId
-    }, function(e, r) {
+function unlockDeployment(opts, cb) {
+    var find = {};
+
+    if (opts.databaseId)
+        find['_id'] = opts.databaseId
+    else
+        find.deploymentId = opts.deploymentId;
+
+    console.log(find);
+    atCollection.find(find, function(e, r) {
         if (e) return cb(e);
 
         if (r.length == 0) {
@@ -176,9 +308,7 @@ function unlockDeployment(deployId, cb) {
                 octoHelper.modifyMachine(changes, function(e, r) {
                     if (e) return cb(e, r);
 
-                    atCollection.remove({
-                        deploymentId: deployId
-                    }, function(e, rRecord) {
+                    atCollection.remove(find, function(e, rRecord) {
                         cb(e, r);
                     });
                 });
@@ -191,9 +321,11 @@ function deploy(message, cb) {
     //Performs a deployment from a deploy message
     var opts = {
         dataset: {
-            Filename: message.snapshotFile || __CONFIG.deploymentOptions.datasetFilename
+            Filename: message.snapshotFile || __CONFIG.deploymentOptions.datasetFilename,
+            Name: message.snapshotName || 'Not Provided'
         },
         build: {
+            Branch: message.branch,
             Version: message.buildId
         },
         config: __CONFIG.deploymentOptions.deploymentConfig,
@@ -201,8 +333,27 @@ function deploy(message, cb) {
         poolEnvironmentId: __CONFIG.deploymentOptions.poolEnvironmentId
     };
 
-    helper.automatedTestDeployment(opts, function(e, r) {
-        if (!e) {
+
+    atCollection.insert({
+        deployStarted: Date.now(),
+        environmentId: opts.environmentId,
+        environmentName: null,
+        build: opts.build,
+        dataset: opts.dataset,
+        taskId: null,
+        deploymentId: null,
+        state: 'Provisioning',
+        isCompleted: false,
+        isSuccessful: false,
+        isProvisioning: true,
+        isExecuting: false,
+        message: '',
+        hrUri: '',
+        mobileUri: '',
+        recruitmentUri: ''
+    }, function(e, i) {
+        helper.automatedTestDeployment(opts, function(e, r) {
+            var update = {};
             //build urls
             var urls = {
                     hrUri: null,
@@ -225,24 +376,53 @@ function deploy(message, cb) {
                 }
             });
 
-            atCollection.insert({
-                environmentId: opts.environmentId,
-                build: opts.build,
-                dataset: opts.dataset,
-                taskId: r.deploymentResponse.TaskId,
-                deploymentId: r.deploymentResponse.Id,
-                state: 'Executing',
-                isCompleted: false,
-                isSuccessful: false,
-                message: message,
-                hrUri: urls.hrUri,
-                mobileUri: urls.mobileUri,
-                recruitmentUri: urls.recruitmentUri
-            }, function(e, i) {
+            update.message = message;
+            update.hrUri = urls.hrUri;
+            update.mobileUri = urls.mobileUri;
+            update.recruitmentUri = urls.recruitmentUri;
+            update.isProvisioning = false;
 
+            if (!e) {
+                update.taskId = r.deploymentResponse.TaskId;
+                update.isExecuting = true;
+                update.deploymentId = r.deploymentResponse.Id;
+                update.state = 'Executing';
+            } else {
+                update.isCompleted = true;
+                update.state = 'Failed';
+            }
+
+            atCollection.update({
+                _id: i._id
+            }, {
+                "$set": update
+            }, function(err, i) {
+                if (update.state == 'Failed') {
+                    var payload = {
+                        type: 'failed',
+                        environment: 'automatedTesting001',
+                        hrUrl: ('http://' + update.hrUri),
+                        recruitmentUrl: ('http://' + update.recruitmentUri),
+                        mobileUrl: ('http://' + update.mobileUri),
+                        octopusDeploymentId: 'N/A'
+                    };
+
+                    var payloadString = JSON.stringify(payload);
+
+                    request({
+                        method: 'POST',
+                        uri: 'https://coral-reef.azurewebsites.net/deployment/' + update.message._id + '/actions',
+                        body: payload,
+                        json: true
+                    }, function(error, results, body) {
+                        console.log('hit coral reef with results', error, results.statusCode, body)
+                        cb(e, r);
+                    });
+                } else {
+                    cb(e, r);
+                }
             });
-        }
-        cb(e, r);
+        });
     });
 }
 
@@ -251,7 +431,7 @@ function checkRunningDeployments(taskId, cb) {
     if (!checkActiveDeploymentState) return end();
     //Task runs every 30 secs, updates running deployments && adds message to rabbit upon successfull deployment
     atCollection.find({
-        isCompleted: false
+        isExecuting: true
     }, function(e, r) {
         if (!e) {
             async.map(r, function(item, mcb) {
@@ -267,6 +447,8 @@ function checkRunningDeployments(taskId, cb) {
 
                         if (t.Task.IsCompleted) {
 
+                            update['$set'].isExecuting = false;
+                            update['$set'].deployFinished = Date.now();
                             console.log('Deployment done, posting complete action back to coral-reef');
 
                             var payload = {
@@ -288,8 +470,10 @@ function checkRunningDeployments(taskId, cb) {
                             }, function(e, r, b) {
                                 console.log('hit coral reef with results', e, r.statusCode, b)
                                 if (!t.Task.FinishedSuccessfully) {
-                                    unlockDeployment(item.deploymentId, function(e, r) {
-                                        console.log(item.deploymentId, 'Failed, automatically unlocked');
+                                    unlockDeployment({
+                                        deploymentId: item.deploymentId
+                                    }, function(e, r) {
+                                        console.log(item.deploymentId, 'Failed, automatically unlocked', e, r);
                                     });
                                 }
                             });
@@ -326,8 +510,10 @@ function checkRunningDeployments(taskId, cb) {
 function shutdownPoolMachines() {
     //Check for machines that have been in the pool for over three hours and shutdown if active
     if (deployProcessing || !checkMachinesToShutdown) {
+        console.log('not shutting down')
         return end();
     }
+    console.log('shutting down')
     octoHelper.findMachinesByEnv([__CONFIG.deploymentOptions.poolEnvironmentId], function(e, m) {
         console.log('shutdown check')
         if (e) {
@@ -413,7 +599,9 @@ function checkTestingComplete() {
         if (e) return end();
         console.log(b)
         async.mapLimit(b, 5, function(deployment, mcb) {
-            unlockDeployment(deployment.octopusDeploymentId, function(e, unlockRes) {
+            unlockDeployment({
+                deploymentId: deployment.octopusDeploymentId
+            }, function(e, unlockRes) {
                 console.log(deployment.octopusDeploymentId, ' unlocked, testing complete');
                 if (e) return mcb();
 

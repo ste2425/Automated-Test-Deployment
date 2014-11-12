@@ -68,12 +68,16 @@ function getBlockList(opts, cb) {
 function uploadFile(opts, cb) {
 	opts.overwriteType = opts.overwriteType || 'existing';
 	var fullPath = opts.path + '/' + opts.filename;
-
+	console.log('uploading', opts.filename)
 	async.waterfall([
 
 		function(wcb) {
 			//get file stats to upload
 			fs.stat(fullPath, function(e, s) {
+				if (e) {
+					e.uploadStep = 'get internal file stats';
+					e.filename = opts.filename;
+				}
 				wcb(e, {
 					stats: s
 				});
@@ -88,6 +92,9 @@ function uploadFile(opts, cb) {
 			}, function(e, blob) {
 				if (!e) {
 					wopts.blob = blob[0];
+				} else {
+					e.uploadStep = 'check if blob exists';
+					e.filename = opts.filename;
 				}
 				wcb(e, wopts);
 			});
@@ -105,6 +112,10 @@ function uploadFile(opts, cb) {
 						//upload
 						console.log('Uploading as doesnt exist')
 						upload(opts, function(error) {
+							if (error) {
+								error.uploadStep = 'Upload File, file not existing';
+								error.filename = opts.filename;
+							}
 							wcb(error);
 						});
 					}
@@ -112,13 +123,17 @@ function uploadFile(opts, cb) {
 				case 'newest':
 					//take newest blob
 					if (wopts.blob && moment(wopts.blob.properties['last-modified']).isAfter(moment(wopts.stats.mtime))) {
-						console.log('Existing newest')
+						console.log('Existing newest', opts.filename)
 						//take existing
 						wcb(null, wopts.blob);
 					} else {
 						//upload
-						console.log('Uploading newest')
+						console.log('Uploading newest', opts.filename)
 						upload(opts, function(error) {
+							if (error) {
+								error.uploadStep = 'Upload File, local file newer';
+								error.filename = opts.filename;
+							}
 							wcb(error);
 						});
 					}
@@ -127,6 +142,10 @@ function uploadFile(opts, cb) {
 					//overwrite existing blob
 					console.log('Overwriting');
 					upload(opts, function(error) {
+							if (error) {
+								error.uploadStep = 'Upload File, overwriting with local';
+								error.filename = opts.filename;
+							}
 						wcb(error);
 					});
 					break;
