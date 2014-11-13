@@ -116,7 +116,7 @@ app.get('/', function(req, res) {
         }
     });
 });
-app.get('/log', function(req, res){
+app.get('/log', function(req, res) {
     res.sendFile(__dirname + '/log.log');
 });
 app.get('/modals/orphanedDeployModal', function(req, res) {
@@ -572,7 +572,14 @@ function pollCoralReefForQueuedDeployments() {
             }, function(e, r, b) {
                 //if (e) return end();
                 // console.log(r);
-                messageHandler(b);
+                if (r.statusCode == 200) {
+                    messageHandler(b);
+                } else {
+                    console.log('Error from coral reef', {
+                        Url: 'https://coral-reef.azurewebsites.net/deployment/queue/pop',
+                        Error: b
+                    })
+                }
                 end();
             });
         } else {
@@ -599,7 +606,14 @@ function checkTestingComplete() {
         },
         json: true
     }, function(e, r, b) {
-        if (e) return end();
+        if (e || r.statusCode != 200) {
+            console.log('Coral Reef error', {
+                Url: 'https://coral-reef.azurewebsites.net/deployment',
+                Error,
+                b
+            });
+            return end();
+        }
         console.log(b)
         async.mapLimit(b, 5, function(deployment, mcb) {
             unlockDeployment({
