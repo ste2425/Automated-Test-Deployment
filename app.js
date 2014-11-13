@@ -609,8 +609,7 @@ function checkTestingComplete() {
         if (e || r.statusCode != 200) {
             console.log('Coral Reef error', {
                 Url: 'https://coral-reef.azurewebsites.net/deployment',
-                Error,
-                b
+                Error: b
             });
             return end();
         }
