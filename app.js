@@ -116,6 +116,9 @@ app.get('/', function(req, res) {
         }
     });
 });
+app.get('/log', function(req, res){
+    res.sendFile(__dirname + '/log.log');
+});
 app.get('/modals/orphanedDeployModal', function(req, res) {
     res.render('orphanedDeployModal');
 });
@@ -523,7 +526,7 @@ function shutdownPoolMachines() {
                 if (moment().diff(moment(item.LastModifiedOn), 'minutes') >= 180 && item.Status != 'Offline') {
                     console.log('unlocking environments')
                     azureHelper.getToken(function(e, t) {
-                        if (!e) {
+                        if (!e && t) {
                             azureHelper.stopVm({
                                 wait: true,
                                 token: t.token,
