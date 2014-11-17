@@ -1,9 +1,11 @@
 var o = require('./octopusHelper');
 var azureHelper = require('./azureHelper');
 var async = require('async');
+var atCollection = require(__ROOT, '/module/data-access').get();
 
 module.exports = {
-    automatedTestDeployment: automatedTestDeployment
+    automatedTestDeployment: automatedTestDeployment,
+    unlockDeployment: unlockDeployment
 }
 
 function automatedTestDeployment(options, callback) {
@@ -180,5 +182,49 @@ function automatedTestDeployment(options, callback) {
                 callback(e, r)
             })
         }
+    });
+}
+
+function unlockDeployment(opts, cb) {
+    var find = {};
+
+    if (opts.databaseId)
+        find['_id'] = opts.databaseId
+    else
+        find.deploymentId = opts.deploymentId;
+
+    console.log(find);
+    atCollection.find(find, function(e, r) {
+        if (e) return cb(e);
+
+        if (r.length == 0) {
+            return cb({
+                ErrorMessage: 'Deployment not found.'
+            }, null);
+        }
+
+        if (!r[0].isCompleted) {
+            return cb({
+                ErrorMessage: 'Cannot unlock, active deployment.'
+            }, null);
+        }
+        o.findMachinesByEnv([r[0].environmentId], function(e, m) {
+            if (e) {
+                return cb(e, null);
+            } else {
+                var changes = [];
+                m[0].Machine.Machines.forEach(function(machine) {
+                    machine.EnvironmentIds = [__CONFIG.deploymentOptions.poolEnvironmentId];
+                    changes.push(machine);
+                });
+                o.modifyMachine(changes, function(e, r) {
+                    if (e) return cb(e, r);
+
+                    atCollection.remove(find, function(e, rRecord) {
+                        cb(e, r);
+                    });
+                });
+            }
+        });
     });
 }
