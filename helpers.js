@@ -2,10 +2,13 @@ var o = require('./octopusHelper');
 var azureHelper = require('./azureHelper');
 var async = require('async');
 var atCollection = require(__ROOT + '/modules/data-access').get();
+var request = require('request');
 
 module.exports = {
     automatedTestDeployment: automatedTestDeployment,
-    unlockDeployment: unlockDeployment
+    unlockDeployment: unlockDeployment,
+    deploy: deploy,
+    messageHandler: messageHandler
 }
 
 function automatedTestDeployment(options, callback) {
@@ -22,7 +25,7 @@ function automatedTestDeployment(options, callback) {
 
                 function(wcb) {
                     //check environment free
-		    console.log('checkig environment is free...');
+                    console.log('checkig environment is free...');
                     o.findMachinesByEnv([options.environmentId], function(err, machines) {
                         if (err) {
                             err.environmentId = options.environmentId;
@@ -39,7 +42,7 @@ function automatedTestDeployment(options, callback) {
                 },
                 function(opts, wcb) {
                     // check pool
-		    console.log('checkig pool...');
+                    console.log('checkig pool...');
                     o.findMachinesByEnv([options.poolEnvironmentId], function(err, machines) {
                         if (err || machines[0].Machine.TotalMachines < options.config.MachineNumber) {
                             err = err || {
@@ -54,7 +57,7 @@ function automatedTestDeployment(options, callback) {
                 },
                 function(opts, wcb) {
                     //assign machine roles
-		    console.log('assigning machine roles...');
+                    console.log('assigning machine roles...');
                     var changes = [];
                     opts.machines.forEach(function(item, i) {
                         item.EnvironmentIds = [options.environmentId];
@@ -76,7 +79,7 @@ function automatedTestDeployment(options, callback) {
                 function(opts, wcb) {
                     //setup azure environments
                     //Get Token
-		    console.log('setting up azure environments...');
+                    console.log('setting up azure environments...');
                     azureHelper.getToken(function(e, t) {
                         if (e) {
                             e.environmentId = options.environmentId;
@@ -105,7 +108,7 @@ function automatedTestDeployment(options, callback) {
                                     azureHelper.uploadFile({
                                         token: t.token,
                                         container: 'datastore',
-                                        path: __CONFIG.deploymentOptions.dataStoreLocation,// __CONFIG.DatasetDirectory,
+                                        path: __CONFIG.deploymentOptions.dataStoreLocation, // __CONFIG.DatasetDirectory,
                                         filename: options.dataset.Filename + '.zip',
                                         overwriteType: 'newest'
                                     }, function(e, u) {
@@ -143,7 +146,7 @@ function automatedTestDeployment(options, callback) {
                 },
                 function(opts, wcb) {
                     //perform deployment
-		    console.log('performing deployment...');
+                    console.log('performing deployment...');
 
                     //set deployment options
                     var formValues = {
@@ -157,14 +160,14 @@ function automatedTestDeployment(options, callback) {
                     };
                     //find machines roles assigned too
                     opts.machines.forEach(function(machine) {
-                        machine.Roles.forEach(function(role) {
-                            //Role names differ to Variable names
-                            role = role.replace('Svr', 'Server').replace('360', 'tx');
+                            machine.Roles.forEach(function(role) {
+                                //Role names differ to Variable names
+                                role = role.replace('Svr', 'Server').replace('360', 'tx');
 
-                            formValues[role] = machine.AzureName;
-                        });
-                    })
-                    //Build deployment variables object from label names and deploy
+                                formValues[role] = machine.AzureName;
+                            });
+                        })
+                        //Build deployment variables object from label names and deploy
                     o.performDeployment({
                         releaseId: 'releases-3269',
                         environmentId: options.environmentId,
@@ -182,6 +185,115 @@ function automatedTestDeployment(options, callback) {
                 callback(e, r)
             })
         }
+    });
+}
+
+function deploy(message, cb) {
+    //Performs a deployment from a deploy message
+    var opts = {
+        dataset: {
+            Filename: message.snapshotFile || __CONFIG.deploymentOptions.datasetFilename,
+            Name: message.snapshotName || 'Not Provided'
+        },
+        build: {
+            Branch: message.branch,
+            Version: message.buildId
+        },
+        config: __CONFIG.deploymentOptions.deploymentConfig,
+        environmentId: __CONFIG.deploymentOptions.deploymentEnvironmentId,
+        poolEnvironmentId: __CONFIG.deploymentOptions.poolEnvironmentId
+    };
+
+
+    atCollection.insert({
+        deployStarted: Date.now(),
+        environmentId: opts.environmentId,
+        environmentName: null,
+        build: opts.build,
+        dataset: opts.dataset,
+        taskId: null,
+        deploymentId: null,
+        state: 'Provisioning',
+        isCompleted: false,
+        isSuccessful: false,
+        isProvisioning: true,
+        isExecuting: false,
+        message: '',
+        hrUri: '',
+        mobileUri: '',
+        recruitmentUri: ''
+    }, function(e, i) {
+        automatedTestDeployment(opts, function(e, r) {
+            var update = {};
+            //build urls
+            var urls = {
+                    hrUri: null,
+                    mobileUri: null,
+                    recruitmentUri: null
+                },
+                hrRole = 'hrWebSvr',
+                mobileRole = 'hrWebSvr',
+                recRole = 'orWebSvr';
+
+            r.machines.forEach(function(item) {
+                if (item.Roles.indexOf(hrRole) != -1) {
+                    urls.hrUri = (item.Name + ':82');
+                }
+                if (item.Roles.indexOf(mobileRole) != -1) {
+                    urls.mobileUri = (item.Name + ':84');
+                }
+                if (item.Roles.indexOf(recRole) != -1) {
+                    urls.recruitmentUri = (item.Name + ':80');
+                }
+            });
+
+            update.message = message;
+            update.hrUri = urls.hrUri;
+            update.mobileUri = urls.mobileUri;
+            update.recruitmentUri = urls.recruitmentUri;
+            update.isProvisioning = false;
+
+            if (!e) {
+                update.taskId = r.deploymentResponse.TaskId;
+                update.isExecuting = true;
+                update.deploymentId = r.deploymentResponse.Id;
+                update.state = 'Executing';
+            } else {
+                update.isCompleted = true;
+                update.state = 'Failed';
+            }
+
+            atCollection.update({
+                _id: i._id
+            }, {
+                "$set": update
+            }, function(err, i) {
+                if (update.state == 'Failed') {
+                    var payload = {
+                        type: 'failed',
+                        environment: 'automatedTesting001',
+                        hrUrl: ('http://' + update.hrUri),
+                        recruitmentUrl: ('http://' + update.recruitmentUri),
+                        mobileUrl: ('http://' + update.mobileUri),
+                        octopusDeploymentId: 'N/A'
+                    };
+
+                    var payloadString = JSON.stringify(payload);
+
+                    request({
+                        method: 'POST',
+                        uri: 'https://coral-reef.azurewebsites.net/deployment/' + update.message._id + '/actions',
+                        body: payload,
+                        json: true
+                    }, function(error, results, body) {
+                        console.log('hit coral reef with results', error, results.statusCode, body)
+                        cb(e, r);
+                    });
+                } else {
+                    cb(e, r);
+                }
+            });
+        });
     });
 }
 
@@ -227,4 +339,32 @@ function unlockDeployment(opts, cb) {
             }
         });
     });
+}
+
+//message handler
+function messageHandler(message) {
+    //Stop recieveing more messages whilst proccessing this.
+    console.log('recieved message');
+    if (!message) {
+        console.log('ERROR: message not recieved', message);
+        return;
+    }
+
+    if(!message._id || !message.branch || !message.buildId){
+        console.log('ERROR: Message does nto contain required params', message)
+        return;
+    }
+
+    if (!deployProcessing) {
+        console.log('processing');
+        deployProcessing = true;
+        console.log(message);
+        deploy(message, function(e, r) {
+            if (e) {
+                console.log('Error: ', e);
+            }
+            console.log('no longer deploy processing');
+            deployProcessing = false;
+        });
+    }
 }
