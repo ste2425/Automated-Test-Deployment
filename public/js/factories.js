@@ -30,34 +30,40 @@ app.factory('serverService', function($rootScope, $http) {
 	}
 	return {
 		getServerState: function(cb) {
-			$http.get('/state/all').
+			$http.get('/api/state', {
+				params: {
+					type: 'all'
+				}
+			}).
 			success(handleSuccess(cb)).
 			error(handleError(cb));
 		},
 		toggleServerState: function(state, cb) {
-			$http.post('/toggle/' + state).
+			$http.post('/api/state/', {
+				type: state
+			}).
 			success(handleSuccess(cb)).
 			error(handleError(cb));
 		},
 		getDeployments: function(cb) {
-			$http.get('/deployments').
+			$http.get('/api/deployments').
 			success(handleSuccess(cb)).
 			error(handleError(cb));
 		},
 		unlockDeployment: function(databaseId, cb) {
-			$http.post('/unlockdeployment', {
+			$http.post('/api/unlockdeployment', {
 				databaseId: databaseId
 			}).
 			success(handleSuccess(cb)).
 			error(handleError(cb));
 		},
 		nextDeploy: function(cb) {
-			$http.get('/nextdeploy').
+			$http.get('/api/nextdeploy').
 			success(handleSuccess(cb)).
 			error(handleError(cb));
 		},
 		cleanUpDeployments: function(deploymentId, environmentid, cb) {
-			$http.post('/cleanupdeploy', {
+			$http.post('/api/cleanupdeploy', {
 				deploymentId: deploymentId,
 				environmentId: environmentid
 			}).

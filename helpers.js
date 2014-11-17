@@ -1,7 +1,7 @@
 var o = require('./octopusHelper');
 var azureHelper = require('./azureHelper');
 var async = require('async');
-var atCollection = require(__ROOT, '/module/data-access').get();
+var atCollection = require(__ROOT + '/modules/data-access').get();
 
 module.exports = {
     automatedTestDeployment: automatedTestDeployment,
