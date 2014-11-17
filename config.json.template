@@ -27,7 +27,7 @@
 		"deployBranches": [""],
 		"datasetFilename": "",
 		"poolEnvironmentId": "",
-		"deploymentEnvironmentId": "",
+		"deploymentEnvironmentId": [""],
 		"deploymentConfig": {
 			"MachineNumber": 0,
 			"MachineRoles": [

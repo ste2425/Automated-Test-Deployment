@@ -200,7 +200,7 @@ function deploy(message, cb) {
             Version: message.buildId
         },
         config: __CONFIG.deploymentOptions.deploymentConfig,
-        environmentId: __CONFIG.deploymentOptions.deploymentEnvironmentId,
+        environmentId: message.deployEnvironmentId || __CONFIG.deploymentOptions.deploymentEnvironmentId,
         poolEnvironmentId: __CONFIG.deploymentOptions.poolEnvironmentId
     };
 
@@ -351,7 +351,7 @@ function messageHandler(message) {
     }
 
     if(!message._id || !message.branch || !message.buildId){
-        console.log('ERROR: Message does nto contain required params', message)
+        console.log('ERROR: Message does not contain required params', message)
         return;
     }
 

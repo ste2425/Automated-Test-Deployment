@@ -33,7 +33,6 @@ function checkRunningDeployments(taskId, cb) {
 
                             update['$set'].isExecuting = false;
                             update['$set'].deployFinished = Date.now();
-                            console.log('Deployment done, posting complete action back to coral-reef');
 
                             var payload = {
                                 type: (t.Task.FinishedSuccessfully ? 'complete' : 'failed'), //t.Task.State.toLowerCase()),
@@ -45,6 +44,7 @@ function checkRunningDeployments(taskId, cb) {
                             };
 
                             var payloadString = JSON.stringify(payload);
+                            console.log('Deployment done, posting back to coral-reef');
 
                             request({
                                 method: 'POST',

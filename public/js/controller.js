@@ -98,6 +98,8 @@ app.controller('deployments', function($scope, $modal, serverService) {
 		serverService.nextDeploy(function(err, res) {
 			if (!err) {
 				$scope.nextDeployment = res.data;
+			}else{
+				$scope.nextDeployment = null;
 			}
 			setTimeout(getNextDeploy, 5000);
 		});

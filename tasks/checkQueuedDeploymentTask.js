@@ -5,39 +5,75 @@
 */
 var octoHelper = require(__ROOT + '/octopusHelper'),
     request = require('request'),
-    helper = require(__ROOT + '/helpers.js');
+    helper = require(__ROOT + '/helpers.js'),
+    async = require('async');
 
 function pollCoralReefForQueuedDeployments() {
+    if (!checkForDeployments || deployProcessing) return end();
 
-    //console.log('Polling coral-reef...');
-    //console.log('Deploy processing - ' + (deployProcessing ? 'yes' : 'no'));
-
-    if (!checkForDeployments) return end();
-
-    octoHelper.findMachinesByEnv([__CONFIG.deploymentOptions.poolEnvironmentId], function(e, m) {
-        if (!e && m[0].Machine.TotalMachines >= 2) {
-            console.log('Machine available, requesting build');
-            request({
-                method: 'PUT',
-                uri: 'https://coral-reef.azurewebsites.net/deployment/queue/pop',
-                json: true
-            }, function(e, r, b) {
-                //if (e) return end();
-                // console.log(r);
-                if (r.statusCode == 200) {
-                    helper.messageHandler(b);
-                } else {
-                    console.log('Error from coral reef', {
-                        Url: 'https://coral-reef.azurewebsites.net/deployment/queue/pop',
-                        Error: b
-                    })
+    async.waterfall([function(wcb) {
+        //check pool
+        octoHelper.findMachinesByEnv([__CONFIG.deploymentOptions.poolEnvironmentId], function(e, m) {
+            if (e || m[0].Machine.TotalMachines < 2) {
+                wcb({
+                    ErrorMessage: 'Machines not available in pool',
+                    Error: e
+                }, null);
+            } else {
+                wcb(null, {
+                    pool: m[0].Machine
+                });
+            }
+        });
+    }, function(opts, wcb) {
+        //check deploy envs
+        var deployId = "";
+        octoHelper.findMachinesByEnv(__CONFIG.deploymentOptions.deploymentEnvironmentId, function(e, m) {
+            if (e) {
+                return wcb({
+                    ErrorMessage: 'Error getting deployment environments',
+                    Error: e
+                }, null);
+            }
+            m.every(function(item){
+                if(item.Machine.TotalMachines == 0){
+                    deployId = item.Id;
+                    return false;
                 }
-                end();
+                return true;
             });
-        } else {
-            console.log('Machines not available not deploying');
-            end();
+            if(deployId == ""){
+                wcb({ErrorMessage: "No free deployment environments"}, null);
+            }else{
+                opts.deployId = deployId;
+                wcb(null, opts);
+            }
+        });
+    }, function(opts, wcb) {
+        //check coral reef            
+        request({
+            method: 'PUT',
+            uri: 'https://coral-reef.azurewebsites.net/deployment/queue/pop',
+            json: true
+        }, function(e, r, b) {
+            if (r.statusCode == 200) {
+                opts.message = b;
+                opts.message.deployEnvironmentId = opts.deployId;
+                helper.messageHandler(opts.message);
+                wcb(null, opts);
+            } else {
+                wcb({
+                    ErrorMessage: 'Error from coral reef',
+                    Error: b
+                }, null);
+            }
+        });
+    }], function(e, r) {
+        if (e) {
+            console.log('Error deploying');
+            console.log(e);
         }
+        end();
     });
 
     function end() {
