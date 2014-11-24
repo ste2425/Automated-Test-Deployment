@@ -56,7 +56,7 @@ function pollCoralReefForQueuedDeployments() {
             uri: 'https://coral-reef.azurewebsites.net/deployment/queue/pop',
             json: true
         }, function(e, r, b) {
-            if (r.statusCode == 200) {
+            if (!e && r.statusCode == 200) {
                 opts.message = b;
                 opts.message.deployEnvironmentId = opts.deployId;
                 helper.messageHandler(opts.message);
@@ -64,7 +64,7 @@ function pollCoralReefForQueuedDeployments() {
             } else {
                 wcb({
                     ErrorMessage: 'Error from coral reef',
-                    Error: b
+                    Error: e || b
                 }, null);
             }
         });
