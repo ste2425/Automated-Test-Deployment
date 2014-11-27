@@ -29,7 +29,7 @@ function checkTestingComplete() {
             helper.unlockDeployment({
                 deploymentId: deployment.octopusDeploymentId
             }, function(e, unlockRes) {
-                console.log(deployment.octopusDeploymentId, ' unlocked, testing complete');
+                console.log(deployment.octopusDeploymentId, ' unlocked, testing complete', e);
                 if (e) return mcb();
 
                 request({
