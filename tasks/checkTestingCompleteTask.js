@@ -25,7 +25,6 @@ function checkTestingComplete() {
             });
             return end();
         }
-        console.log(b)
         async.mapLimit(b, 5, function(deployment, mcb) {
             helper.unlockDeployment({
                 deploymentId: deployment.octopusDeploymentId
@@ -40,7 +39,8 @@ function checkTestingComplete() {
                     body: {
                         type: 'environment-recycled'
                     }
-                }, function() {
+                }, function(e, r, b) {
+                    console.log('Told Coral Reef To Unlock, ', deployment.octopusDeploymentId, e, b);
                     mcb();
                 });
             });
