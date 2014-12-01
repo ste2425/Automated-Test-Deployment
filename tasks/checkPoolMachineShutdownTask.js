@@ -14,15 +14,15 @@ function shutdownPoolMachines() {
         console.log('not shutting down')
         return end();
     }
-    console.log('shutting down')
+    console.log('shutting down', new Date())
     octoHelper.findMachinesByEnv([__CONFIG.deploymentOptions.poolEnvironmentId], function(e, m) {
-        console.log('shutdown check')
+        console.log('shutdown check', e)
         if (e) {
             end();
         } else {
             async.map(m[0].Machine.Machines, function(item, mcb) {
                 if (moment().diff(moment(item.LastModifiedOn), 'minutes') >= 180 && item.Status != 'Offline') {
-                    console.log('unlocking environments')
+                    console.log('unlocking environments', m[0].Machine.Machines)
                     azureHelper.getToken(function(e, t) {
                         if (!e && t) {
                             azureHelper.stopVm({
@@ -30,10 +30,11 @@ function shutdownPoolMachines() {
                                 token: t.token,
                                 vmName: item.Name.replace('.cloudapp.net', '')
                             }, function(e, r) {
-                                console.log('machines shutdown')
+                                console.log('machines shutdown', e)
                                 mcb(null, r);
                             })
                         } else {
+                            console.log('Shutdown getting azure token error, ', e)
                             mcb();
                         }
                     });
