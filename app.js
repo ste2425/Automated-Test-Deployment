@@ -6,7 +6,7 @@ global.__ROOT = __dirname;
 global.deployProcessing = false;
 global.checkForDeployments = false;
 global.checkActiveDeploymentState = false;
-global.checkMachinesToShutdown = false;
+global.checkMachinesToShutdown = true;
 global.checkForDeploymentsUnlock = false;
 
 

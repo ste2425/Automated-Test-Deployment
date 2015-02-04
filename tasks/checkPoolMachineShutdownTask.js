@@ -11,18 +11,17 @@ var octoHelper = require(__ROOT + '/octopusHelper'),
 function shutdownPoolMachines() {
     //Check for machines that have been in the pool for over three hours and shutdown if active
     if (deployProcessing || !checkMachinesToShutdown) {
-        console.log('not shutting down')
         return end();
     }
-    console.log('shutting down', new Date())
+
     octoHelper.findMachinesByEnv([__CONFIG.deploymentOptions.poolEnvironmentId], function(e, m) {
-        console.log('shutdown check', e)
         if (e) {
+            e.LineNumber = 19;
+            log(e);
             end();
         } else {
             async.map(m[0].Machine.Machines, function(item, mcb) {
                 if (moment().diff(moment(item.LastModifiedOn), 'minutes') >= 180 && item.Status != 'Offline') {
-                    console.log('unlocking environments', m[0].Machine.Machines)
                     azureHelper.getToken(function(e, t) {
                         if (!e && t) {
                             azureHelper.stopVm({
@@ -30,11 +29,15 @@ function shutdownPoolMachines() {
                                 token: t.token,
                                 vmName: item.Name.replace('.cloudapp.net', '')
                             }, function(e, r) {
-                                console.log('machines shutdown', e)
+                                if(e){
+                                    e.LineNumber = 34;
+                                    log(e);
+                                }
                                 mcb(null, r);
                             })
                         } else {
-                            console.log('Shutdown getting azure token error, ', e)
+                            e.LineNumber = 37;
+                            log(e);
                             mcb();
                         }
                     });
@@ -55,3 +58,14 @@ function shutdownPoolMachines() {
 }
 
 module.exports = shutdownPoolMachines;
+
+function log(e, d){
+    if(e){
+        console.log('------- ERROR: check pool machine shutdown task\n');
+        console.log(new Date());
+        console.log(e);
+        console.log('-------\n');
+    }
+    if(d)
+        console.log(d);
+}

@@ -44,7 +44,6 @@ function checkRunningDeployments(taskId, cb) {
                             };
 
                             var payloadString = JSON.stringify(payload);
-                            console.log('Deployment done, posting back to coral-reef');
 
                             request({
                                 method: 'POST',
@@ -52,12 +51,18 @@ function checkRunningDeployments(taskId, cb) {
                                 body: payload,
                                 json: true
                             }, function(e, r, b) {
-                                console.log('hit coral reef with results', e, r.statusCode, b)
+                                if(e || !r){
+                                    e.LineNumber = 56;
+                                    log({Error: e, Reponse: r, Body: b});
+                                }
                                 if (!t.Task.FinishedSuccessfully) {
                                     helper.unlockDeployment({
                                         deploymentId: item.deploymentId
                                     }, function(e, r) {
-                                        console.log(item.deploymentId, 'Failed, automatically unlocked', e, r);
+                                        if(e){
+                                            e.LineNumber = 63;
+                                            log({Error: e, Response: r});
+                                        }
                                     });
                                 }
                             });
@@ -71,7 +76,8 @@ function checkRunningDeployments(taskId, cb) {
                             mcb();
                         });
                     } else {
-                        console.log('task error')
+                        e.LineNumber = 79;
+                        log(e);
                         mcb();
                     }
                 });
@@ -91,4 +97,15 @@ function checkRunningDeployments(taskId, cb) {
     }
 }
 
-module.exports = checkRunningDeployments
+module.exports = checkRunningDeployments;
+
+function log(e, d){
+    if(e){
+        console.log('------- ERROR: check running deployment task\n');
+        console.log(new Date());
+        console.log(e);
+        console.log('-------\n');
+    }
+    if(d)
+        console.log(d);
+}

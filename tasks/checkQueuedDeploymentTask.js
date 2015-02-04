@@ -70,8 +70,7 @@ function pollCoralReefForQueuedDeployments() {
         });
     }], function(e, r) {
         if (e) {
-            console.log('Error deploying');
-            console.log(e);
+            log(e);
         }
         end();
     });
@@ -84,3 +83,14 @@ function pollCoralReefForQueuedDeployments() {
 }
 
 module.exports = pollCoralReefForQueuedDeployments;
+
+function log(e, d){
+    if(e){
+        console.log('------- ERROR: check queue deployment task\n');
+        console.log(new Date());
+        console.log(e);
+        console.log('-------\n');
+    }
+    if(d)
+        console.log(d);
+}

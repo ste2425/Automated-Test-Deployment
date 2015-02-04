@@ -18,10 +18,13 @@ function checkTestingComplete() {
         },
         json: true
     }, function(e, r, b) {
+        r = r || {};
         if (e || r.statusCode != 200) {
-            console.log('Coral Reef error', {
+            log({
                 Url: 'https://coral-reef.azurewebsites.net/deployment',
-                Error: b
+                Error: e,
+                Body: b,
+                Response: r
             });
             return end();
         }
@@ -29,8 +32,11 @@ function checkTestingComplete() {
             helper.unlockDeployment({
                 deploymentId: deployment.octopusDeploymentId
             }, function(e, unlockRes) {
-                console.log(deployment.octopusDeploymentId, ' unlocked, testing complete', e);
-                if (e) return mcb();
+                if(e){
+                    e.LineNumber = 36;
+                    log(e);
+                }
+                //if (e) return mcb();
 
                 request({
                     method: 'POST',
@@ -40,7 +46,10 @@ function checkTestingComplete() {
                         type: 'environment-recycled'
                     }
                 }, function(e, r, b) {
-                    console.log('Told Coral Reef To Unlock, ', deployment.octopusDeploymentId, e, b);
+                    if(e){
+                        e.LineNumber = 50;
+                        log({Error: e, Body: b, Response: r});
+                    }
                     mcb();
                 });
             });
@@ -57,3 +66,14 @@ function checkTestingComplete() {
 }
 
 module.exports = checkTestingComplete;
+
+function log(e, d){
+    if(e){
+        console.log('------- ERROR: check testing complete task\n');
+        console.log(new Date());
+        console.log(e);
+        console.log('-------\n');
+    }
+    if(d)
+        console.log(d);
+}
