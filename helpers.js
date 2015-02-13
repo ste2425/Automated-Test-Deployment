@@ -28,10 +28,12 @@ function automatedTestDeployment(options, callback) {
                     console.log('checkig environment is free...');
                     o.findMachinesByEnv([options.environmentId], function(err, machines) {
                         if (err) {
+                            err.provisionStep = 'Check Environment, ' + options.environmentId + ' Free';
                             err.environmentId = options.environmentId;
                             wcb(err, null);
                         } else if (machines[0].Machine.TotalMachines > 0) {
                             wcb({
+                                provisionStep: 'Check Environment, ' + options.environmentId + ' Free',
                                 ErrorMessage: 'Environment: ' + options.environmentId + ', In Use.',
                                 environmentId: options.environmentId
                             }, null);
@@ -48,6 +50,7 @@ function automatedTestDeployment(options, callback) {
                             err = err || {
                                 ErrorMessage: 'Not enough available machines.'
                             };
+                            err.provisionStep = 'Check Pool Machine Available';
                             wcb(err, null);
                         } else {
                             opts.machines = machines[0].Machine.Machines.slice(0, options.config.MachineNumber);
@@ -73,6 +76,7 @@ function automatedTestDeployment(options, callback) {
                         } else {
                             err.environmentId = options.environmentId;
                         }
+                        err.provisionStep = 'Assign Machine Roles';
                         wcb(err, opts);
                     });
                 },
@@ -85,7 +89,11 @@ function automatedTestDeployment(options, callback) {
                             e.environmentId = options.environmentId;
                             wcb(e);
                         } else {
-                            var error = null;
+                            var error = {
+                                provisionStep: 'Provision Azure Resources'
+                                environmentId: options.environmentId,
+                                errors: []
+                            };
                             async.parallel([
 
                                 function(pcb) {
@@ -98,7 +106,8 @@ function automatedTestDeployment(options, callback) {
                                         overwriteType: 'newest'
                                     }, function(e, u) {
                                         if (e) {
-                                            error = e;
+                                            e.step = 'Upload Release Pack'
+                                            error.errors.push(e);
                                         }
                                         pcb(null, u);
                                     });
@@ -113,7 +122,8 @@ function automatedTestDeployment(options, callback) {
                                         overwriteType: 'newest'
                                     }, function(e, u) {
                                         if (e) {
-                                            error = e;
+                                            e.step = 'Upload Data Pack'
+                                            error.errors.push(e);
                                         }
                                         pcb(null, u);
                                     });
@@ -130,13 +140,14 @@ function automatedTestDeployment(options, callback) {
                                         });
                                     }, function(e, m) {
                                         if (e) {
-                                            error = e;
+                                            e.step = 'Activate Virtual Machines'
+                                            error.errors.push(e);
                                         }
                                         pcb(null, m);
                                     });
                                 }
                             ], function(err, r) {
-                                if (error) {
+                                if (error.errors.length > 0) {
                                     error.environmentId = options.environmentId;
                                 }
                                 wcb(error, opts);
@@ -174,6 +185,7 @@ function automatedTestDeployment(options, callback) {
                         variables: formValues
                     }, function(e, r) {
                         if (e) {
+                            e.provisionStep = 'Starting Octopus Deployment'
                             e.environmentId = options.environmentId;
                         }
                         opts.deploymentResponse = r;
@@ -183,7 +195,7 @@ function automatedTestDeployment(options, callback) {
             ], function(e, r) {
                 //fin
                 callback(e, r)
-            })
+            });
         }
     });
 }
@@ -261,6 +273,7 @@ function deploy(message, cb) {
             } else {
                 update.isCompleted = true;
                 update.state = 'Failed';
+                update.failureError = e;
             }
 
             atCollection.update({
@@ -275,7 +288,8 @@ function deploy(message, cb) {
                         hrUrl: ('http://' + update.hrUri),
                         recruitmentUrl: ('http://' + update.recruitmentUri),
                         mobileUrl: ('http://' + update.mobileUri),
-                        octopusDeploymentId: 'N/A'
+                        octopusDeploymentId: 'N/A',
+                        error: update.failureError
                     };
 
                     var payloadString = JSON.stringify(payload);
@@ -350,7 +364,7 @@ function messageHandler(message) {
         return;
     }
 
-    if(!message._id || !message.branch || !message.buildId){
+    if (!message._id || !message.branch || !message.buildId) {
         console.log('ERROR: Message does not contain required params', message)
         return;
     }

@@ -33,6 +33,9 @@ function checkRunningDeployments(taskId, cb) {
 
                             update['$set'].isExecuting = false;
                             update['$set'].deployFinished = Date.now();
+                            update['$set'].failureError = {
+                                ErrorMessage: 'See Octopus Deploy For Error Message'
+                            };
 
                             var payload = {
                                 type: (t.Task.FinishedSuccessfully ? 'complete' : 'failed'), //t.Task.State.toLowerCase()),
@@ -40,7 +43,8 @@ function checkRunningDeployments(taskId, cb) {
                                 hrUrl: ('http://' + item.hrUri),
                                 recruitmentUrl: ('http://' + item.recruitmentUri),
                                 mobileUrl: ('http://' + item.mobileUri),
-                                octopusDeploymentId: item.deploymentId
+                                octopusDeploymentId: item.deploymentId,
+                                error: update['$set'].failureError
                             };
 
                             var payloadString = JSON.stringify(payload);
@@ -51,17 +55,26 @@ function checkRunningDeployments(taskId, cb) {
                                 body: payload,
                                 json: true
                             }, function(e, r, b) {
-                                if(e || !r){
+                                if (e || !r) {
                                     e.LineNumber = 56;
-                                    log({Error: e, Reponse: r, Body: b});
+                                    e.Type = 'Marking Complete';
+                                    log({
+                                        Error: e,
+                                        Reponse: r,
+                                        Body: b
+                                    });
                                 }
                                 if (!t.Task.FinishedSuccessfully) {
                                     helper.unlockDeployment({
                                         deploymentId: item.deploymentId
                                     }, function(e, r) {
-                                        if(e){
+                                        if (e) {
                                             e.LineNumber = 63;
-                                            log({Error: e, Response: r});
+                                            e.Type = 'Unlocking Environment';
+                                            log({
+                                                Error: e,
+                                                Response: r
+                                            });
                                         }
                                     });
                                 }
@@ -99,13 +112,13 @@ function checkRunningDeployments(taskId, cb) {
 
 module.exports = checkRunningDeployments;
 
-function log(e, d){
-    if(e){
+function log(e, d) {
+    if (e) {
         console.log('------- ERROR: check running deployment task\n');
         console.log(new Date());
         console.log(e);
         console.log('-------\n');
     }
-    if(d)
+    if (d)
         console.log(d);
 }
