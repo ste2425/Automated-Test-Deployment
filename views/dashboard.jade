@@ -72,6 +72,9 @@ body(ng-app="app")
 						.col-md-3.options
 							button.btn.btn-warning.btn-block(ng-click="showOrphans(deploy.deployment, deploy.orphanedDeployments)" ng-show="deploy.orphanedDeployments.length > 0") Manage Orphans
 							button.btn.btn-default.btn-block(ng-disabled="deploy | disableUnlock" ng-click="unlock($index)") unlock
+					.row(ng-show="deploy.state == 'Failed'")
+						.alert.alert-danger
+							{{deploy.failureError}}
 			div(ng-show="deployments.length == 0").col-md-12
 				.deploy-item
 					.row
