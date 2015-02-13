@@ -148,9 +148,10 @@ function automatedTestDeployment(options, callback) {
                                 }
                             ], function(err, r) {
                                 if (error.errors.length > 0) {
-                                    error.environmentId = options.environmentId;
+                                    wcb(error, opts);
+                                }else{
+                                    wcb(null, opts);
                                 }
-                                wcb(error, opts);
                             });
                         }
                     });
