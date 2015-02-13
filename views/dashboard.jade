@@ -74,7 +74,7 @@ body(ng-app="app")
 							button.btn.btn-default.btn-block(ng-disabled="deploy | disableUnlock" ng-click="unlock($index)") unlock
 					.row(ng-show="deploy.state == 'Failed'")
 						.alert.alert-danger
-							{{deploy.failureError}}
+							p {{deploy.failureError}}
 			div(ng-show="deployments.length == 0").col-md-12
 				.deploy-item
 					.row

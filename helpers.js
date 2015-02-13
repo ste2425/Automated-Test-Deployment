@@ -75,8 +75,8 @@ function automatedTestDeployment(options, callback) {
                             opts.machines = m;
                         } else {
                             err.environmentId = options.environmentId;
+                            err.provisionStep = 'Assign Machine Roles';
                         }
-                        err.provisionStep = 'Assign Machine Roles';
                         wcb(err, opts);
                     });
                 },
