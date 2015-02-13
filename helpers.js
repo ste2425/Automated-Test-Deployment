@@ -90,7 +90,7 @@ function automatedTestDeployment(options, callback) {
                             wcb(e);
                         } else {
                             var error = {
-                                provisionStep: 'Provision Azure Resources'
+                                provisionStep: 'Provision Azure Resources',
                                 environmentId: options.environmentId,
                                 errors: []
                             };
