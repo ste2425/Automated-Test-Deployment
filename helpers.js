@@ -289,8 +289,7 @@ function deploy(message, cb) {
                         hrUrl: ('http://' + update.hrUri),
                         recruitmentUrl: ('http://' + update.recruitmentUri),
                         mobileUrl: ('http://' + update.mobileUri),
-                        octopusDeploymentId: 'N/A',
-                        error: update.failureError
+                        octopusDeploymentId: 'N/A'
                     };
 
                     var payloadString = JSON.stringify(payload);

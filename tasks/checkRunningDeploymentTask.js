@@ -43,8 +43,7 @@ function checkRunningDeployments(taskId, cb) {
                                 hrUrl: ('http://' + item.hrUri),
                                 recruitmentUrl: ('http://' + item.recruitmentUri),
                                 mobileUrl: ('http://' + item.mobileUri),
-                                octopusDeploymentId: item.deploymentId,
-                                error: update['$set'].failureError
+                                octopusDeploymentId: item.deploymentId
                             };
 
                             var payloadString = JSON.stringify(payload);
