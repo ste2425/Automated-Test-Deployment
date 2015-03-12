@@ -68,7 +68,7 @@ function checkRunningDeployments(taskId, cb) {
                                 } else {
                                     update['$set'].wvNotified = true;
                                 }
-                                if (!t.Task.FinishedSuccessfully) {
+                                /*if (!t.Task.FinishedSuccessfully) {
                                     helper.unlockDeployment({
                                         deploymentId: item.deploymentId
                                     }, function(e, r) {
@@ -81,7 +81,7 @@ function checkRunningDeployments(taskId, cb) {
                                             });
                                         }
                                     });
-                                }
+                                }*/
 
                                 atCollection.update({
                                     _id: item['_id']
@@ -90,6 +90,14 @@ function checkRunningDeployments(taskId, cb) {
                                     //console.log(e, u)
                                     mcb();
                                 });
+                            });
+                        } else {
+                            atCollection.update({
+                                _id: item['_id']
+                            }, update, function(e, u) {
+                                //console.log(update)
+                                //console.log(e, u)
+                                mcb();
                             });
                         }
                     } else {
