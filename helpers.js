@@ -231,6 +231,7 @@ function deploy(message, cb) {
         isSuccessful: false,
         isProvisioning: true,
         isExecuting: false,
+        wvNotified: false,
         message: '',
         hrUri: '',
         mobileUri: '',

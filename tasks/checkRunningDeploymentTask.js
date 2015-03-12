@@ -15,7 +15,10 @@ function checkRunningDeployments(taskId, cb) {
     if (!checkActiveDeploymentState) return end();
     //Task runs every 30 secs, updates running deployments && adds message to rabbit upon successfull deployment
     atCollection.find({
-        isExecuting: true
+        isExecuting: true,
+        wvNotified: {
+            $ne: true
+        }
     }, function(e, r) {
         if (!e) {
             async.map(r, function(item, mcb) {
@@ -62,6 +65,8 @@ function checkRunningDeployments(taskId, cb) {
                                         Reponse: r,
                                         Body: b
                                     });
+                                } else {
+                                    update['$set'].wvNotified = true;
                                 }
                                 if (!t.Task.FinishedSuccessfully) {
                                     helper.unlockDeployment({
@@ -77,16 +82,16 @@ function checkRunningDeployments(taskId, cb) {
                                         }
                                     });
                                 }
+
+                                atCollection.update({
+                                    _id: item['_id']
+                                }, update, function(e, u) {
+                                    //console.log(update)
+                                    //console.log(e, u)
+                                    mcb();
+                                });
                             });
                         }
-
-                        atCollection.update({
-                            _id: item['_id']
-                        }, update, function(e, u) {
-                            //console.log(update)
-                            //console.log(e, u)
-                            mcb();
-                        });
                     } else {
                         e.LineNumber = 79;
                         log(e);
