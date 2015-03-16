@@ -15,10 +15,17 @@ function checkRunningDeployments(taskId, cb) {
     if (!checkActiveDeploymentState) return end();
     //Task runs every 30 secs, updates running deployments && adds message to rabbit upon successfull deployment
     atCollection.find({
-        isExecuting: true,
-        wvNotified: {
-            $ne: true
-        }
+        $or: [{
+            isExecuting: true
+        }, {
+            $and: [{
+                isCompleted: true
+            }, {
+                wvNotified: {
+                    $ne: true
+                }
+            }]
+        }]
     }, function(e, r) {
         if (!e) {
             async.map(r, function(item, mcb) {
