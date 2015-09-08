@@ -181,7 +181,7 @@ function automatedTestDeployment(options, callback) {
                         })
                         //Build deployment variables object from label names and deploy
                     o.performDeployment({
-                        releaseId: 'releases-3269',
+                        releaseId: __CONFIG.deploymentOptions.deployReleaseId,
                         environmentId: options.environmentId,
                         variables: formValues
                     }, function(e, r) {
