@@ -7,13 +7,6 @@
 		"database": "",
 		"collection": ""
 	},
-	"aqmpAccess": {
-		"user": "",
-		"password": "",
-		"host": "",
-		"port": 0,
-		"deploymentQueueName": ""
-	},
 	"octopusAccess": {
 		"apiKey": "",
 		"host": ""
@@ -25,6 +18,8 @@
 	},
 	"deploymentOptions": {
 		"deployReleaseId": "",
+		"dataStoreLocation": "",
+		"buildStoreLocation": "",
 		"deployBranches": [""],
 		"datasetFilename": "",
 		"poolEnvironmentId": "",
